@@ -1,0 +1,305 @@
+---
+title: "Cancer Presentation"
+author: "Lara and Jonathan"
+date: "Winter Quarter 2019"
+output: 
+  ioslides_presentation: 
+    keep_md: yes
+---
+
+##Background
+- Over 1.5 million cancer cases diagnosed in the US each year
+- Darthmouth Atlas Project report
+- Examining elderly cancer patients across the country
+- Poor prognosis patients
+
+```{r out.width = "80%", fig.align = "center", echo=FALSE}
+knitr::include_graphics("PPT_IMG_1.jpg")
+```
+
+
+
+## Load the tidyverse 
+```{r}
+library(tidyverse)
+```
+
+## Retrieve data from Excel
+```{r}
+Cancer <-
+readr::read_csv("DAP_cancer_events_hosp_2010.csv", 
+                na = c("", " ", "NA", "#N/A", "-999", "\\"))
+Cancer
+```
+
+## Briefly analyze data and look for NAs
+```{r}
+glimpse(Cancer)
+```
+
+## Load skimr
+```{r}
+library(skimr)
+```
+
+## Use the Skim function
+```{r}
+Cancer %>%
+  skimr::skim()
+```
+
+## Had to use select to exclude "X17-20". They skewed my NA value. 
+```{r}
+CancerNEW <- Cancer %>%
+  select(`Provider ID`, `Hospital Name`, City, State, `Number of deaths among cancer patients assigned to hospital (2010)`, `Percent of cancer patients dying in hospital (2010)`, `Percent of cancer patients admitted to hospital during the last month of life (2010 deaths)`, `Percent of cancer patients admitted to intensive care during the last month of life (2010 deaths)`, `ICU days per cancer patient during the last month of life (2010 deaths)`, `Percent of cancer patients receiving life-sustaining treatment during the last month of life (2010 deaths)`, `Percent of cancer patients receiving chemotherapy during the last two weeks of life (2010 deaths)`, `Percent of cancer patients enrolled in hospice during the last month of life (2010 deaths)`, `Percent of cancer patients enrolled in hospice during the last three days of life (2010 deaths)`, `Percent of cancer patients seeing ten or more physicians during the last six months of life (2010 deaths)`,`HIV Related` )
+CancerNEW
+```
+
+
+## What are the names we are working with?
+```{r}
+names(Cancer)  
+```
+#these names aren't great
+
+## Renaming the data 
+```{r}
+CancerName <- CancerNEW %>%
+dplyr::rename( Deaths_in_hospital = "Number of deaths among cancer patients assigned to hospital (2010)", 
+               Percent_death = "Percent of cancer patients dying in hospital (2010)", 
+percent_admitted_LM = "Percent of cancer patients admitted to hospital during the last month of life (2010 deaths)", 
+percent_admitted_ICU_LM = "Percent of cancer patients admitted to intensive care during the last month of life (2010 deaths)", 
+Avg_ICU_Days_LM = "ICU days per cancer patient during the last month of life (2010 deaths)", 
+Percent_receiving_LStreatment_LM = "Percent of cancer patients receiving life-sustaining treatment during the last month of life (2010 deaths)", 
+Percent_receiving_chemo_L2W = "Percent of cancer patients receiving chemotherapy during the last two weeks of life (2010 deaths)", 
+Percent_Hospice_LM = "Percent of cancer patients enrolled in hospice during the last month of life (2010 deaths)", 
+Percent_Hospice_L3D = "Percent of cancer patients enrolled in hospice during the last three days of life (2010 deaths)", 
+Percent_seeing_10ormoreMDs_L6M = "Percent of cancer patients seeing ten or more physicians during the last six months of life (2010 deaths)")
+CancerName
+```
+## These are much better
+```{r}
+names(CancerName)
+```
+
+
+## How many NAs are in our data?
+```{r}
+CancerName %>%
+  summarize(number_na=sum(is.na(CancerName)))
+```
+
+## Where are these NAs Located?
+```{r}
+  CancerName %>%
+  purrr::map_df(~sum(is.na(.))) %>%
+  tidyr::gather(key="variables", value="num_nas") %>% 
+  arrange(desc(num_nas))
+```
+
+## We have a ton of NAs. Majority of these come from the the variables shown in the previous slide.
+
+## Highest death rate by State
+```{r}
+CancerName %>%
+  select(State, Percent_death) %>%
+  arrange(desc(Percent_death))
+```
+##Percent Death by Top 3 States
+```{r eval=FALSE}
+CancerName %>%
+  group_by(State) %>% 
+  filter(State %in% c("NY", "NJ", "IN")) %>%
+  ggplot(aes(x=State, y=Percent_death))+
+  geom_boxplot()+
+  labs(title = "Percent Death by Top 3 States",
+       y = "% Death")+
+  theme(plot.title = element_text(size = rel(1.5), hjust = 0.5))
+```
+
+##Boxplot
+```{r, echo=FALSE, warning=FALSE}
+CancerName %>%
+  group_by(State) %>% 
+  filter(State %in% c("NY", "NJ", "IN")) %>%
+  ggplot(aes(x=State, y=Percent_death))+
+  geom_boxplot()+
+  labs(title = "Percent Death by Top 3 States",
+       y = "% Death")+
+  theme(plot.title = element_text(size = rel(1.5), hjust = 0.5))
+```
+
+## Lowest death rate by State
+```{r}
+CancerName %>%
+  select(State, Percent_death) %>%
+  arrange(Percent_death)
+```
+
+##Percent Death by Top and Bottom States
+```{r eval=FALSE}
+CancerName %>%
+  group_by(State) %>% 
+  filter(State %in% c("NY", "FL")) %>%
+  ggplot(aes(x=State, y=Percent_death))+
+  geom_boxplot()+
+  labs(title = "Percent Death by Top and Bottom States",
+       y = "% Death")+
+  theme(plot.title = element_text(size = rel(1.5), hjust = 0.5))
+```
+
+##Boxplot
+```{r, echo=FALSE}
+CancerName %>%
+  group_by(State) %>% 
+  filter(State %in% c("NY", "FL")) %>%
+  ggplot(aes(x=State, y=Percent_death))+
+  geom_boxplot()+
+  labs(title = "Percent Death by Top and Bottom States",
+       y = "% Death")+
+  theme(plot.title = element_text(size = rel(1.5), hjust = 0.5))
+```
+
+## Focusing strictly on HIV related cases 
+```{r}
+CancerHIV <- CancerName %>%
+  filter(`HIV Related`=="HIV")
+CancerHIV
+```
+
+## What's the average deaths per state for HIV cases 
+```{r}
+CancerHIV_2 <-CancerHIV %>%
+  select(City, State, Deaths_in_hospital) %>%
+  filter(!State=="NA") %>%
+  group_by(State) %>%
+  summarize(
+    State_mean = mean(Deaths_in_hospital)) %>%
+  arrange(desc(State_mean))
+CancerHIV_2
+```
+
+## How does this look on a plot? 
+```{r eval=FALSE}
+CancerHIV_2 %>% 
+  top_n(10) %>%
+  ggplot(aes(x=reorder(State, State_mean), y=State_mean, fill=State)) +
+  geom_bar(stat = "identity", alpha=1) +
+  labs(title = "Number of Cancer-related deaths caused by HIV (State)", 
+       x= "State", 
+       y= " Numner of deaths") +
+  theme_bw() +
+  theme(panel.grid.major = element_line(colour = "gray 50")) +
+   theme(plot.title = element_text(size = rel(1.5), hjust= 0.5)) 
+```
+## How does this look on a plot? 
+```{r, echo=FALSE}
+CancerHIV_2 %>% 
+  top_n(10) %>%
+  ggplot(aes(x=reorder(State, State_mean), y=State_mean, fill=State)) + 
+  geom_bar(stat = "identity", alpha=1) +
+  labs(title = "Number of Cancer-related deaths caused by HIV (State)", 
+       x= "State", 
+       y= " Numner of deaths") +
+  theme_bw() +
+  theme(panel.grid.major = element_line(colour = "gray 50")) +
+   theme(plot.title = element_text(size = rel(1.5), hjust= 0.5)) 
+```
+
+
+## Does that mean IL, or competing states, are the worst state to treat cancer cases caused by HIV?
+```{r}
+CancerHIV_3<- CancerHIV %>%
+  select(City, State, Percent_death, `HIV Related`) %>% 
+  group_by(State) %>%
+  summarize(State_mean_percent_death=mean(Percent_death))
+CancerHIV_3
+```
+## Let's see
+```{r eval=FALSE}
+CancerHIV_3 %>%
+  top_n(10) %>%
+  ggplot(aes(x=reorder(State,State_mean_percent_death), y= State_mean_percent_death, fill=State)) +
+  geom_bar(stat = "identity", alpha=1) +
+    labs(title = "Percent death of admitted HIV patients (State)", 
+       x= "State", 
+       y= " Percent of death") + 
+  theme_bw() +
+    theme(panel.grid.major = element_line(colour = "gray 50")) +
+   theme(plot.title = element_text(size = rel(1.5), hjust= 0.5)) 
+```
+
+## Let's see
+```{r, echo=FALSE}
+CancerHIV_3 %>%
+  top_n(10) %>%
+  ggplot(aes(x=reorder(State,State_mean_percent_death), y= State_mean_percent_death, fill=State)) +
+  geom_bar(stat = "identity", alpha=1) +
+    labs(title = "Percent death of admitted HIV patients (State)", 
+       x= "State", 
+       y= " Percent of death") + 
+  theme_bw() +
+    theme(panel.grid.major = element_line(colour = "gray 50")) +
+   theme(plot.title = element_text(size = rel(1.5), hjust= 0.5)) 
+```
+
+## Here we clearly see that the top 10 of previous plot are drastically different from these
+
+
+## Let's see how the top 5 states from the previous plot compare to their "Regular" case's data?
+```{r}
+
+CancerHIV_3 <- CancerHIV_3 %>%
+   filter(State== "DC"| State== "OK" |State== "NY" |State== "AL"| State== "CA" ) 
+
+CancerHIV_3$HIV_related<-c('HIV','HIV','HIV','HIV','HIV')
+CancerHIV_3
+```
+## Continued
+```{r}
+
+  Cancer_reg_mean<- CancerName %>%
+  filter(!`HIV Related`=="HIV") %>%
+  select(City, State, Percent_death) %>% 
+  group_by(State) %>%
+  summarize(State_mean_percent_death=mean(Percent_death)) %>%
+    filter(State== "DC"| State== "OK" |State== "NY" |State== "AL"| State== "CA" )
+Cancer_reg_mean
+```
+## Continued
+```{r}
+Cancer_reg_mean$HIV_related<-c('N-HIV','N-HIV','N-HIV','N-HIV','N-HIV')
+Cancer_reg_mean
+```
+## Continued
+```{r}
+
+Cancer_matix <- rbind(Cancer_reg_mean,CancerHIV_3) 
+Cancer_matix
+```
+## HIV-Death percents vs Regular-death percents (States)
+```{r eval=FALSE}
+Cancer_matix %>%
+  ggplot(aes(x=reorder(State,State_mean_percent_death), y= State_mean_percent_death, fill= `HIV_related` )) +
+  geom_bar(stat = "identity",position = "dodge") +
+  labs(title = "HIV-Death percents vs Regular-death percents (States)", 
+       x= "State", 
+       y= "Death Percent") +
+  theme_bw() +
+  theme(panel.grid.major = element_line(colour = "gray 50")) +
+   theme(plot.title = element_text(size = rel(1.5), hjust= 0.5)) +
+  scale_fill_discrete(name = "HIV Related")
+```
+## Bar Graph
+```{r, echo=FALSE}
+Cancer_matix %>%
+  ggplot(aes(x=reorder(State,State_mean_percent_death), y= State_mean_percent_death, fill= `HIV_related` )) +
+  geom_bar(stat = "identity",position = "dodge") +
+  labs(title = "HIV-Death percents vs Regular-death percents (States)", 
+       x= "State", 
+       y= "Death Percent") +
+  theme_bw() +
+  theme(panel.grid.major = element_line(colour = "gray 50")) +
+   theme(plot.title = element_text(size = rel(1.5), hjust= 0.5)) +
+  scale_fill_discrete(name = "HIV Related")
+```
